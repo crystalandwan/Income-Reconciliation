@@ -1,14 +1,11 @@
-library(data.table)
-library(binsmooth)
-library(pracma)
-library(sf)
-library(dplyr)
-
+library(pacman)
+p_load(data.table, binsmooth, pracma, sf, dplyr)
 ###############################################################################
 ###Update state-level income distribution for the projected years & SSPs
 
-setwd(paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
-             "/Income Distribution Reconciliation"))
+# #Set path to access to ACS and GDP data
+# setwd(paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
+#              "/Income Distribution Reconciliation"))
 
 #Read in state-level ACS 2013-2017 data
 ACS <- fread("./WA_state_ACS2013-2017/nhgis0100_ds233_20175_state.csv")
@@ -24,10 +21,13 @@ colnames(WA_ACS) <- c("population", "household_number", "aggregate_income",
                       "Income1", "Income2", "Income3", "Income4", "Income5", 
                       "Income6", "Income7", "Income8", "Income9", "Income10", 
                       "Income11", "Income12", "Income13", "Income14", "Income15", 
-                      "Income16") #Income1-16 represents 16 different income
+                      "Income16") #Income1-16 represents 16 different income 
                                   #categories in ACS.
-#Calculate state-level mean household size
-hh_size <- WA_ACS$population / WA_ACS$household_number
+
+#Set the state-level mean household size as 2.62 (calculated as the temporal 
+#mean between 2011 and 2019)
+hh_size <- 2.62
+
 #Calculate state-level mean household income
 mean_income <- WA_ACS$aggregate_income / WA_ACS$household_number
 
@@ -51,15 +51,14 @@ for(i in 1:10){
 
 #Read in projected gdp per capita
 gdp <- read.csv(paste0('./deciles income distribution/version1.1.0/', 
-                'state_decile_shares_gdp_per_capita_2011_2100.csv'))
+                       'state_decile_shares_gdp_per_capita_2011_2100.csv'))
 #Extract data for Washington state
 gdp <- gdp[gdp$state == "WA", ]
-#Use gdp/income ratio in 2015 to convert gdp per capita to household income 
-gdp2 <- gdp[gdp$year == 2015, ]
-gdp2$decile_gdp_hh <- gdp2$decile_gdp_pc * hh_size
-gdp2$decile_income_hhs <- decile_incomes_hhs
-gdp$ratio <- mean(gdp2$decile_income_hhs) / mean(gdp2$decile_gdp_hh)
-gdp$decile_income_hhs <- gdp$decile_gdp_pc * hh_size * gdp$ratio
+#Set the GDP-to-income ratio as 0.84 (calculated as the temporal mean 
+#between 2011 and 2019)
+gdp_to_income_ratio <- 0.84 
+#Convert decile gpd per capita to decile income per household
+gdp$decile_income_hhs <- gdp$decile_gdp_pc * hh_size * gdp_to_income_ratio
 
 #Read in projected state-level population 
 year <- sort(unique(gdp$year))
@@ -78,7 +77,7 @@ pop_proj <- rbind(pop_proj, pop_ssp5)
 
 ###Construct small income intervals to approxiamte the income distribution and 
 #then adjust the income by projected decile mean.Finally calculate the state-
-#level population by 3 income bins based on the updated income distributiomn.
+#level population by 3 income bins based on the updated income distribution.
 
 SSP <- c("SSP2", "SSP3", "SSP5")
 year <- sort(unique(gdp$year))[6:22]
@@ -171,10 +170,11 @@ rownames(decile_income_est) <- c("d1", "d2",  "d3",  "d4",  "d5", "d6",  "d7",
 
 ###############################################################################
 ###Downscaling income from state-level to block/block group level
-setwd(paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
-             "/Income Distribution Reconciliation/LODES/Version 8",
-             "/RAC_job_by_income"))
 
+# #Set path to access to LODES data
+# setwd(paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
+#              "/Income Distribution Reconciliation/LODES/Version 8",
+#              "/RAC_job_by_income"))
 
 #Read in LODES data for all years
 first = TRUE
@@ -195,7 +195,7 @@ for(i in 1:18){
   data$CE02wp <- data$CE02 /sum(data$CE02)*100
   data$CE03wp <- data$CE03 /sum(data$CE03)*100
   data$year <- as.numeric(i+2001)
-
+  
   if(first == TRUE){
     LODES <- data
   } else{
@@ -231,23 +231,18 @@ weight$GISJOIN <- paste0("G", substr(weight$h_geocode, 1, 2), 0,
                          substr(weight$h_geocode, 6, 15))
 bk_proj <- weight[, c(158, 5:157)]
 
-#The number of blocks in the previously-generated bk_proj is less than the]
+#The number of blocks in the previously-generated bk_proj is less than the
 #actual total blocks in Washington because blocks of 0 population are not 
 #included in the LODES dataset. These blocks need to be added to the bk_proj. 
-Wa_block <- st_read(paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
-                           "/Projected Population Downscaling/block_boundary",
-                           "/WA2020/WA_block_2020.shp"))
+Wa_block <- st_read("WA_block_2020.shp")
 Wa_block <- left_join(Wa_block, bk_proj, by = "GISJOIN")
 Wa_block <- Wa_block[, c(1, 19:172)]
 Wa_block[is.na(Wa_block)] <- 0 #If the block has no LODES info, its pop is 0
 bk_proj <- st_drop_geometry(Wa_block)
-bk_proj_rounded[, c(2:154)] <- round(bk_proj[, c(2:154)])
+bk_proj[, c(2:154)] <- round(bk_proj[, c(2:154)])
 
 #Write out projected block-level income data
-fwrite(bk_proj_rounded, paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
-                               "/Income Distribution Reconciliation/Output2.1.0",
-                               "/bk_binned_income_proj_rounded.csv"))
-
+fwrite(bk_proj, "bk_binned_income_proj_rounded.csv")
 
 #Aggregate the block level projection to block group level
 bk_proj$GISJOIN_BG <- substr(bk_proj$GISJOIN, 1, 15)
@@ -259,6 +254,4 @@ colnames(bg_proj)[1] <- "GISJOIN"
 bg_proj[, c(2:154)] <- round(bg_proj[, c(2:154)])
 
 #Write out projected block group-level income data
-fwrite(bg_proj, paste0("C:/Users/wanh535/OneDrive - PNNL/Desktop/GODEEEP",
-                       "/Income Distribution Reconciliation/Output2.1.0",
-                       "/bg_binned_income_proj.csv"))
+fwrite(bg_proj, "bg_binned_income_proj_rounded.csv")
