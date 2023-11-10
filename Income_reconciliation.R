@@ -234,11 +234,10 @@ bk_proj <- weight[, c(158, 5:157)]
 #The number of blocks in the previously-generated bk_proj is less than the
 #actual total blocks in Washington because blocks of 0 population are not 
 #included in the LODES dataset. These blocks need to be added to the bk_proj. 
-Wa_block <- st_read("WA_block_2020.shp")
-Wa_block <- left_join(Wa_block, bk_proj, by = "GISJOIN")
-Wa_block <- Wa_block[, c(1, 19:172)]
-Wa_block[is.na(Wa_block)] <- 0 #If the block has no LODES info, its pop is 0
-bk_proj <- st_drop_geometry(Wa_block)
+Wa_block <- fread("Wa_block2020.csv")
+bk_proj <- left_join(Wa_block, bk_proj, by = "GISJOIN")
+bk_proj <- bk_proj[, -2] #Remove the state indicator column "STATEFP20".
+bk_proj[is.na(bk_proj)] <- 0 #If the block has no LODES info, its pop is 0
 bk_proj[, c(2:154)] <- round(bk_proj[, c(2:154)])
 
 #Write out projected block-level income data
