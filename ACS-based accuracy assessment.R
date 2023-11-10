@@ -52,6 +52,7 @@ ACS2020$high <- (ACS2020$high_income.x+ ACS2020$high_income.y) / 2
 
 
 #Read in projected block group-level income data
+#(can be downloaded at: https://doi.org/10.5281/zenodo.10108728)
 bg <- fread("bg_binned_income_proj_rounded.csv")
 
 #Aggregate to county level
