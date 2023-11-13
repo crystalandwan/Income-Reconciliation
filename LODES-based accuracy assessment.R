@@ -126,7 +126,7 @@ for(validation_year in c(2016, 2017, 2018, 2019)){
     metric2[i, 4] <- round(PPI/sum(validate2[i+1]) * 100, digits = 2)
   }
   
-  colnames(metric2) <- c("R-squared","MdAPE%", "PPI", "PPPI%")
+  colnames(metric2) <- c("R-squared","MdAPE%", "HPI", "PHPI%")
   rownames(metric2) <- c("income1", "income2", "income3")
   print(validation_year)
   print(metric2)
