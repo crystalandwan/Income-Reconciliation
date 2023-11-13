@@ -80,6 +80,6 @@ for(i in 1:3){
   metric[i, 4] <- round(PPI/sum(validate[i+1]) * 100, digits = 2)
 }
 
-colnames(metric) <- c("R-squared","MdAPE%", "PPI", "PPPI%")
+colnames(metric) <- c("R-squared","MdAPE%", "HPI", "PHPI%")
 rownames(metric) <- c("income1", "income2", "income3")
 print(metric)
